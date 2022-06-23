@@ -5,7 +5,7 @@ Creating tools that encourage learning the Bible by heart.
 
 The idea is to create a group and encourage the participants to learn the Bible by heart.
 
-In this case, we are starting with learning [Proverbs](https://www.bibleserver.com/ESV/Proverbs1).
+In this case, we are starting by learning [Proverbs](https://www.bibleserver.com/ESV/Proverbs1).
 
 ## Basic Stats
 
@@ -27,7 +27,7 @@ The learners recite their current repertory F2F to each other.
 
 ["My son, do not forget my teaching, but let your heart keep my commandments, for length of days and years of life and peace they will add to you. Let not steadfast love and faithfulness forsake you; bind them around your neck; write them on the tablet of your heart..."](https://www.bibleserver.com/ESV/Proverbs3%3A1-3)
 
-1. Note the participants' absolute current repertory. Min = 1, Max = 912 verses.
+1. Note the participants' absolute current repertory. Min = 1 verse, Max = 912 verses.
 2. Rank by least forgotten.
 
 _Continuity: Intervals may be months, weeks, or shorter._
@@ -45,6 +45,5 @@ If there arises a dispute, break it up and ask them to find a suitable verse in 
 
 It should all be done in prayer anyway, that it goes in really well and bears fruit.
 Point out the danger of misusing the Bible against each other.
-
 
 ["... A new commandment I give to you, that you love one another: just as I have loved you, you also are to love one another. By this all people will know that you are my disciples, if you have love for one another."](https://www.bibleserver.com/ESV/John13%3A34-35)
