@@ -1,7 +1,7 @@
 # Learn-the-Bible-by-Heart
 Creating tools that encourage learning the Bible by heart.
 
-## What's the big idea?
+## What's the Big Idea?
 
 The idea is to create a group and encourage the participants to learn the Bible by heart.
 
@@ -19,7 +19,7 @@ In this case, we are starting by learning [Proverbs](https://www.bibleserver.com
 
 _Question: How many sentences does the Book of Proverbs include?_
 
-## Tools to stir up motivation to learn
+## Tools to Stir Up Motivation to Learn
 
 Meet in certain intervals.
 
