@@ -28,3 +28,32 @@ It should all be done in prayer anyway, that it goes in really well and bears fr
 Not like a band playing, where one speeds up, finishes earlier and shouts: "First!". _First half of the table tutor the 2nd half._
 
 Ask parents, others, or themselves what prizes are to be won or is rank on a list enough?
+
+## About the current tool "index.html"
+
+Here's what the user is meant to do with this Bible Trainer application:
+
+    Add new text to memorize:
+        Type a Bible verse or passage in the "Neuen Text eingeben" field
+        Click "Start"
+        The text is saved automatically for future use
+
+    Practice memorization:
+        After clicking "Start", the display area will be empty
+        Type each character of the text exactly as shown
+        If correct, the character appears in the display area
+        If wrong, you'll get an error message and need to start over
+        Complete the entire text to receive a success message
+
+    Use previously saved texts:
+        Select any previously saved text from the dropdown menu
+        Click "Start" to begin practicing it
+
+    Delete texts:
+        Select a text from the dropdown
+        Click the "Löschen" button to remove it
+
+    Keyboard shortcuts:
+        Press Escape to cancel the current practice session
+
+The application helps users memorize Bible verses through muscle memory and repetition, requiring perfect character-by-character typing of the text.
