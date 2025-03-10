@@ -1,159 +1,118 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bibel-Trainer (Web Version)</title>
+    <title>Bibel-Trainer</title>
     <style>
-        body {
+        body { 
             font-family: Arial, sans-serif;
-            margin: 0;
+            max-width: 800px;
+            margin: 20px auto;
             padding: 20px;
-            background-color: #f4f4f4;
         }
         .container {
-            max-width: 600px;
-            margin: 0 auto;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
         }
-        h1 {
-            text-align: center;
+        #display-text {
+            font-size: 24px;
+            letter-spacing: 2px;
+            margin: 20px 0;
+            padding: 10px;
+            background: white;
+            min-height: 60px;
         }
-        .input-group {
-            margin-bottom: 15px;
-        }
-        label {
-            font-weight: bold;
+        .status {
+            color: green;
+            margin: 10px 0;
         }
         input, select, button {
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        .display-label {
+            padding: 8px;
+            margin: 5px;
             font-size: 16px;
-            color: #333;
-            margin-top: 20px;
-        }
-        .status-label {
-            color: green;
-            font-weight: bold;
-        }
-        .error {
-            color: red;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Bibel-Trainer</h1>
-        <div id="path-label">Speicherort: Local Storage</div>
-
-        <!-- Dropdown for saved texts -->
-        <div class="input-group">
-            <label for="text-dropdown">Gespeicherte Texte:</label>
-            <select id="text-dropdown">
-                <option value="">--Wähle einen Text--</option>
+        
+        <div class="controls">
+            <select id="text-select" style="width: 300px">
+                <option value="">Gespeicherte Texte</option>
             </select>
+            
+            <input type="text" id="new-text" placeholder="Neuer Text" style="width: 300px">
+            <button onclick="startLearning()">Start</button>
         </div>
 
-        <!-- Input for new text -->
-        <div class="input-group">
-            <label for="new-text">Neuer Text:</label>
-            <input type="text" id="new-text" placeholder="Gib einen neuen Text ein">
-            <button id="start-btn">Start</button>
-        </div>
-
-        <!-- Display label for training -->
-        <div class="display-label" id="display-label"></div>
-
-        <!-- Status label for feedback -->
-        <div class="status-label" id="status-label"></div>
+        <div id="display-text"></div>
+        <div id="status" class="status"></div>
     </div>
 
     <script>
-        // Helper function to save texts to localStorage
-        function saveTexts(texts) {
-            localStorage.setItem('saved_texts', JSON.stringify(texts));
-        }
+        let savedTexts = JSON.parse(localStorage.getItem('bibeltrainer-texts') || [];
+        let currentText = '';
+        let position = 0;
 
-        // Helper function to load texts from localStorage
-        function loadTexts() {
-            const savedTexts = localStorage.getItem('saved_texts');
-            return savedTexts ? JSON.parse(savedTexts) : [];
-        }
-
-        // Initialize the app
+        // Initialize UI
         function init() {
-            const texts = loadTexts();
-            const textDropdown = document.getElementById('text-dropdown');
-            const newTextInput = document.getElementById('new-text');
-            const startButton = document.getElementById('start-btn');
-            const displayLabel = document.getElementById('display-label');
-            const statusLabel = document.getElementById('status-label');
-            let position = 0;
-            let lern_text = "";
-
-            // Function to update dropdown with saved texts
-            function updateDropdown() {
-                textDropdown.innerHTML = texts.map(text => `<option value="${text}">${text}</option>`).join('');
-            }
-
-            // Function to start learning
-            function starteLernen() {
-                const text = newTextInput.value.trim() || textDropdown.value;
-                if (!text) {
-                    statusLabel.innerHTML = "Bitte Text eingeben oder auswählen!";
-                    return;
-                }
-
-                if (!texts.includes(text)) {
-                    texts.push(text);
-                    saveTexts(texts);
-                    updateDropdown();
-                    statusLabel.innerHTML = "Neuer Text gespeichert!";
-                }
-
-                lern_text = text;
-                position = 0;
-                displayLabel.innerHTML = "";
-                statusLabel.innerHTML = "";
-
-                // Focus on the display label to capture key input
-                displayLabel.focus();
-            }
-
-            // Function to check user input
-            function pruefeEingabe(event) {
-                if (!lern_text || event.key === 'Enter' || event.key === 'Escape') {
-                    return;
-                }
-
-                if (event.key === lern_text[position]) {
-                    displayLabel.innerHTML = lern_text.substring(0, position + 1);
-                    position += 1;
-
-                    if (position === lern_text.length) {
-                        alert("Gratulation! Text gelernt!");
-                        position = 0;
-                        displayLabel.innerHTML = "";
-                        newTextInput.value = ""; // Clear input field
-                    }
-                } else {
-                    statusLabel.innerHTML = `Falsches Zeichen! Richtiges Zeichen: ${lern_text[position]}`;
-                    position = 0;
-                    displayLabel.innerHTML = "";
-                }
-            }
-
-            // Event listeners
-            startButton.addEventListener('click', starteLernen);
-            document.addEventListener('keydown', pruefeEingabe);
-
-            // Initial dropdown update
             updateDropdown();
+            document.addEventListener('keydown', checkInput);
         }
 
-        // Initialize the app
+        function updateDropdown() {
+            const select = document.getElementById('text-select');
+            select.innerHTML = '<option value="">Gespeicherte Texte</option>';
+            savedTexts.forEach(text => {
+                select.innerHTML += `<option value="${text}">${text}</option>`;
+            });
+        }
+
+        function startLearning() {
+            const newText = document.getElementById('new-text').value;
+            const selectedText = document.getElementById('text-select').value;
+            
+            currentText = newText || selectedText;
+            
+            if (!currentText) {
+                alert('Bitte Text eingeben oder auswählen!');
+                return;
+            }
+
+            if (newText && !savedTexts.includes(newText)) {
+                savedTexts.push(newText);
+                localStorage.setItem('bibeltrainer-texts', JSON.stringify(savedTexts));
+                updateDropdown();
+                document.getElementById('status').textContent = 'Neuer Text gespeichert!';
+            }
+
+            position = 0;
+            document.getElementById('display-text').textContent = '';
+            document.getElementById('new-text').value = '';
+        }
+
+        function checkInput(event) {
+            if (!currentText || position >= currentText.length) return;
+
+            const char = event.key;
+            if (char === currentText[position]) {
+                document.getElementById('display-text').textContent = 
+                    currentText.substring(0, position + 1);
+                position++;
+                
+                if (position === currentText.length) {
+                    alert('Gratulation! Text gelernt!');
+                    currentText = '';
+                }
+            } else {
+                alert(`Falsch! Richtiges Zeichen: ${currentText[position]}`);
+                position = 0;
+                document.getElementById('display-text').textContent = '';
+            }
+        }
+
+        // Initialize application
         init();
     </script>
 </body>
