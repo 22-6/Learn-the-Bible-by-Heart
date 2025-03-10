@@ -1,35 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
     <title>Bibel-Trainer</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif;
+        :root {
+            --primary-color: #2c3e50;
+            --success-color: #27ae60;
+            --error-color: #c0392b;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
             max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
+            margin: 2rem auto;
+            padding: 0 1rem;
         }
+
         .container {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 10px;
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
         }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .controls {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: 1fr auto;
+        }
+
         #display-text {
-            font-size: 24px;
-            letter-spacing: 2px;
-            margin: 20px 0;
-            padding: 10px;
+            font-size: 1.5rem;
+            letter-spacing: 0.1em;
+            margin: 2rem 0;
+            padding: 1.5rem;
             background: white;
-            min-height: 60px;
+            border-radius: 8px;
+            min-height: 4rem;
+            border: 2px solid #ddd;
         }
+
         .status {
-            color: green;
-            margin: 10px 0;
+            padding: 0.8rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            display: none;
         }
+
+        .status.visible {
+            display: block;
+        }
+
         input, select, button {
-            padding: 8px;
-            margin: 5px;
-            font-size: 16px;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .delete-btn {
+            background: var(--error-color);
+            margin-left: 0.5rem;
         }
     </style>
 </head>
@@ -38,53 +89,83 @@
         <h1>Bibel-Trainer</h1>
         
         <div class="controls">
-            <select id="text-select" style="width: 300px">
-                <option value="">Gespeicherte Texte</option>
-            </select>
+            <div>
+                <select id="text-select" aria-label="Gespeicherte Texte">
+                    <option value="">-- Bitte wählen --</option>
+                </select>
+                <button class="delete-btn" onclick="deleteSelectedText()">Löschen</button>
+            </div>
             
-            <input type="text" id="new-text" placeholder="Neuer Text" style="width: 300px">
-            <button onclick="startLearning()">Start</button>
+            <div>
+                <input type="text" id="new-text" placeholder="Neuen Text eingeben" aria-label="Neuer Text">
+                <button onclick="startLearning()">Start</button>
+            </div>
         </div>
 
-        <div id="display-text"></div>
-        <div id="status" class="status"></div>
+        <div id="display-text" aria-live="polite"></div>
+        <div id="status" class="status" aria-live="assertive"></div>
     </div>
 
     <script>
-        let savedTexts = JSON.parse(localStorage.getItem('bibeltrainer-texts') || [];
+        const STORAGE_KEY = 'bibeltrainer-v1';
         let currentText = '';
         let position = 0;
 
-        // Initialize UI
+        // Initialize application
         function init() {
-            updateDropdown();
-            document.addEventListener('keydown', checkInput);
+            loadTexts();
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        function loadTexts() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                savedTexts = data ? JSON.parse(data) : [];
+                updateDropdown();
+            } catch (error) {
+                showStatus('Fehler beim Laden der Texte', 'error');
+            }
+        }
+
+        function saveTexts() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(savedTexts));
+            } catch (error) {
+                if (error.name === 'QuotaExceededError') {
+                    showStatus('Speicher voll - Bitte alte Texte löschen', 'error');
+                } else {
+                    showStatus('Speichern fehlgeschlagen', 'error');
+                }
+            }
         }
 
         function updateDropdown() {
             const select = document.getElementById('text-select');
-            select.innerHTML = '<option value="">Gespeicherte Texte</option>';
+            select.innerHTML = '<option value="">-- Bitte wählen --</option>';
             savedTexts.forEach(text => {
-                select.innerHTML += `<option value="${text}">${text}</option>`;
+                const option = document.createElement('option');
+                option.value = text;
+                option.textContent = text;
+                select.appendChild(option);
             });
         }
 
         function startLearning() {
-            const newText = document.getElementById('new-text').value;
+            const newText = sanitizeInput(document.getElementById('new-text').value);
             const selectedText = document.getElementById('text-select').value;
-            
+
             currentText = newText || selectedText;
-            
+
             if (!currentText) {
-                alert('Bitte Text eingeben oder auswählen!');
+                showStatus('Bitte Text eingeben oder auswählen!', 'error');
                 return;
             }
 
             if (newText && !savedTexts.includes(newText)) {
                 savedTexts.push(newText);
-                localStorage.setItem('bibeltrainer-texts', JSON.stringify(savedTexts));
+                saveTexts();
                 updateDropdown();
-                document.getElementById('status').textContent = 'Neuer Text gespeichert!';
+                showStatus('Neuer Text gespeichert!', 'success');
             }
 
             position = 0;
@@ -92,28 +173,65 @@
             document.getElementById('new-text').value = '';
         }
 
-        function checkInput(event) {
+        function deleteSelectedText() {
+            const selectedText = document.getElementById('text-select').value;
+            if (!selectedText) return;
+
+            savedTexts = savedTexts.filter(text => text !== selectedText);
+            saveTexts();
+            updateDropdown();
+            showStatus('Text gelöscht', 'success');
+        }
+
+        function handleKeyPress(event) {
             if (!currentText || position >= currentText.length) return;
 
-            const char = event.key;
-            if (char === currentText[position]) {
-                document.getElementById('display-text').textContent = 
-                    currentText.substring(0, position + 1);
-                position++;
-                
-                if (position === currentText.length) {
-                    alert('Gratulation! Text gelernt!');
-                    currentText = '';
-                }
+            if (event.key === 'Escape') {
+                currentText = '';
+                showStatus('Abgebrochen', 'info');
+                return;
+            }
+
+            if (event.key === currentText[position]) {
+                updateDisplay();
+                checkCompletion();
             } else {
-                alert(`Falsch! Richtiges Zeichen: ${currentText[position]}`);
-                position = 0;
-                document.getElementById('display-text').textContent = '';
+                handleWrongInput();
             }
         }
 
-        // Initialize application
-        init();
+        function updateDisplay() {
+            const display = document.getElementById('display-text');
+            display.textContent = currentText.substring(0, position + 1);
+            position++;
+        }
+
+        function checkCompletion() {
+            if (position === currentText.length) {
+                showStatus('Gratulation! Text gelernt!', 'success');
+                currentText = '';
+            }
+        }
+
+        function handleWrongInput() {
+            showStatus(`Falsch! Nächstes Zeichen: ${currentText[position]}`, 'error');
+            position = 0;
+            document.getElementById('display-text').textContent = '';
+        }
+
+        function sanitizeInput(text) {
+            return text.replace(/[<>]/g, '');
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status visible ${type}`;
+            status.textContent = message;
+            setTimeout(() => status.classList.remove('visible'), 3000);
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
