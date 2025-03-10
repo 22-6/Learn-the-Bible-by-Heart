@@ -1,173 +1,160 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <title>Bibel-Trainer Code</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibel-Trainer (Web Version)</title>
     <style>
-        body { font-family: monospace; margin: 20px; }
-        .code-container { background: #f5f5f5; padding: 20px; border-radius: 5px }
-        .keyword { color: #0000ff; }
-        .string { color: #008000; }
-        .comment { color: #696969; }
-        .docstring { color: #2e8b57; font-style: italic; }
-        .function { color: #8b008b; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .display-label {
+            font-size: 16px;
+            color: #333;
+            margin-top: 20px;
+        }
+        .status-label {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+        }
     </style>
 </head>
 <body>
-    <div class="code-container">
-        <pre><code><span class="keyword">import</span> tkinter <span class="keyword">as</span> tk
-<span class="keyword">from</span> tkinter <span class="keyword">import</span> ttk, messagebox
-<span class="keyword">import</span> json
-<span class="keyword">import</span> os
-<span class="keyword">import</span> stat
-<span class="keyword">from</span> functools <span class="keyword">import</span> partial
+    <div class="container">
+        <h1>Bibel-Trainer</h1>
+        <div id="path-label">Speicherort: Local Storage</div>
 
-<span class="keyword">class</span> <span class="function">StringTrainer</span>:
-    <span class="keyword">def</span> <span class="function">__init__</span>(self):
-        <span class="comment">"""Initialize main application components"""</span>
-        <span class="comment"># Secure file storage configuration</span>
-        self.user_home = os.path.expanduser(<span class="string">"~"</span>)
-        self.config_dir = os.path.join(self.user_home, <span class="string">".bibeltrainer"</span>)
-        self.config_file = os.path.join(self.config_dir, <span class="string">"saved_texts.json"</span>)
-        
-        self._ensure_secure_storage()
-        self.saved_texts = self.load_saved_texts()
-        
-        <span class="comment"># GUI initialization</span>
-        self.root = tk.Tk()
-        self.root.title(<span class="string">"Bibel-Trainer"</span>)
-        self.root.protocol(<span class="string">"WM_DELETE_WINDOW"</span>, self._on_close)
-        
-        <span class="comment"># UI components setup</span>
-        self._create_ui_components()
-        self.position = 0
-        self.lern_text = <span class="string">""</span>
-        self.root.bind(<span class="string">'&lt;Key&gt;'</span>, self.prüfe_eingabe)
+        <!-- Dropdown for saved texts -->
+        <div class="input-group">
+            <label for="text-dropdown">Gespeicherte Texte:</label>
+            <select id="text-dropdown">
+                <option value="">--Wähle einen Text--</option>
+            </select>
+        </div>
 
-    <span class="keyword">def</span> <span class="function">_ensure_secure_storage</span>(self):
-        <span class="docstring">"""Create secure directory with restricted permissions
-        Sets file permissions to ensure privacy and security"""</span>
-        <span class="keyword">try</span>:
-            os.makedirs(self.config_dir, exist_ok=True)
-            <span class="comment"># Set directory permissions to 700</span>
-            os.chmod(self.config_dir, stat.S_IRWXU)
-            <span class="keyword">if</span> os.path.exists(self.config_file):
-                <span class="comment"># Set file permissions to 600</span>
-                os.chmod(self.config_file, stat.S_IRUSR | stat.S_IWUSR)
-        <span class="keyword">except</span> OSError <span class="keyword">as</span> e:
-            messagebox.showerror(<span class="string">"Fehler"</span>, f<span class="string">"Konfigurationsfehler: {str(e)}"</span>)
-            <span class="keyword">raise</span>
+        <!-- Input for new text -->
+        <div class="input-group">
+            <label for="new-text">Neuer Text:</label>
+            <input type="text" id="new-text" placeholder="Gib einen neuen Text ein">
+            <button id="start-btn">Start</button>
+        </div>
 
-    <span class="keyword">def</span> <span class="function">_create_ui_components</span>(self):
-        <span class="docstring">"""Create and arrange all UI elements"""</span>
-        <span class="comment"># Path display</span>
-        self.path_label = tk.Label(self.root, text=f<span class="string">"Speicherort: {self.config_file}"</span>)
-        self.path_label.pack(pady=5)
-        
-        <span class="comment"># Text selection dropdown</span>
-        self.text_frame = tk.Frame(self.root)
-        self.text_frame.pack(pady=10)
-        
-        self.text_var = tk.StringVar()
-        self.text_dropdown = ttk.Combobox(self.text_frame, 
-                                        textvariable=self.text_var,
-                                        width=40)
-        self.update_dropdown()
-        self.text_dropdown.pack(side=tk.LEFT, padx=5)
-        
-        <span class="comment"># New text input</span>
-        self.setup_frame = tk.Frame(self.root)
-        self.setup_frame.pack(pady=10)
-        
-        tk.Label(self.setup_frame, text=<span class="string">"Neuer Text:"</span>).pack(side=tk.LEFT)
-        self.text_eingabe = tk.Entry(self.setup_frame, width=40)
-        self.text_eingabe.pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(self.setup_frame, text=<span class="string">"Start"</span>, 
-                 command=self.starte_lernen).pack(side=tk.LEFT)
-        
-        <span class="comment"># Main display</span>
-        self.anzeige_label = tk.Label(self.root, text=<span class="string">""</span>, font=(<span class="string">'Arial'</span>, 16))
-        self.anzeige_label.pack(pady=20)
-        
-        <span class="comment"># Status label</span>
-        self.status_label = tk.Label(self.root, text=<span class="string">""</span>, fg=<span class="string">"green"</span>)
-        self.status_label.pack(pady=5)
+        <!-- Display label for training -->
+        <div class="display-label" id="display-label"></div>
 
-    <span class="keyword">def</span> <span class="function">load_saved_texts</span>(self):
-        <span class="docstring">"""Load saved texts from JSON file"""</span>
-        <span class="keyword">if</span> os.path.exists(self.config_file):
-            <span class="keyword">try</span>:
-                <span class="keyword">with</span> open(self.config_file, <span class="string">'r'</span>, encoding=<span class="string">'utf-8'</span>) <span class="keyword">as</span> f:
-                    <span class="keyword">return</span> json.load(f)
-            <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
-                messagebox.showwarning(<span class="string">"Warnung"</span>, f<span class="string">"Fehler beim Laden: {str(e)}"</span>)
-                <span class="keyword">return</span> []
-        <span class="keyword">return</span> []
-
-    <span class="keyword">def</span> <span class="function">save_texts</span>(self):
-        <span class="docstring">"""Save texts to JSON file with error handling"""</span>
-        <span class="keyword">try</span>:
-            <span class="keyword">with</span> open(self.config_file, <span class="string">'w'</span>, encoding=<span class="string">'utf-8'</span>) <span class="keyword">as</span> f:
-                json.dump(self.saved_texts, f, ensure_ascii=False, indent=2)
-        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
-            messagebox.showerror(<span class="string">"Fehler"</span>, f<span class="string">"Speichern fehlgeschlagen: {str(e)}"</span>)
-
-    <span class="keyword">def</span> <span class="function">update_dropdown</span>(self):
-        <span class="docstring">"""Update dropdown with current saved texts"""</span>
-        self.text_dropdown[<span class="string">'values'</span>] = self.saved_texts
-
-    <span class="keyword">def</span> <span class="function">starte_lernen</span>(self):
-        <span class="docstring">"""Start learning process with selected text"""</span>
-        text = self.text_eingabe.get() <span class="keyword">or</span> self.text_var.get()
-        <span class="keyword">if</span> <span class="keyword">not</span> text:
-            messagebox.showinfo(<span class="string">"Hinweis"</span>, <span class="string">"Bitte Text eingeben oder auswählen!"</span>)
-            <span class="keyword">return</span>
-            
-        <span class="keyword">if</span> text <span class="keyword">not</span> <span class="keyword">in</span> self.saved_texts:
-            self.saved_texts.append(text)
-            self.save_texts()
-            self.update_dropdown()
-            self.status_label.config(text=<span class="string">"Neuer Text gespeichert!"</span>)
-        
-        self.lern_text = text
-        self.position = 0
-        self.anzeige_label.config(text=<span class="string">""</span>)
-        self.setup_frame.pack_forget()
-        self.text_frame.pack_forget()
-        self.root.focus_set()
-
-    <span class="keyword">def</span> <span class="function">prüfe_eingabe</span>(self, event):
-        <span class="docstring">"""Check user input against target text"""</span>
-        <span class="keyword">if</span> <span class="keyword">not</span> self.lern_text <span class="keyword">or</span> <span class="keyword">not</span> event.char <span class="keyword">or</span> event.char <span class="keyword">in</span> <span class="string">'\r\n\t'</span>:
-            <span class="keyword">return</span>
-            
-        <span class="keyword">if</span> event.char == self.lern_text[self.position]:
-            self.anzeige_label.config(text=self.lern_text[:self.position+1])
-            self.position += 1
-            <span class="keyword">if</span> self.position == len(self.lern_text):
-                messagebox.showinfo(<span class="string">"Erfolg!"</span>, <span class="string">"Gratulation! Text gelernt!"</span>)
-                self.position = 0
-                self.anzeige_label.config(text=<span class="string">""</span>)
-                self.setup_frame.pack(pady=10)
-                self.text_frame.pack(pady=10)
-        <span class="keyword">else</span>:
-            messagebox.showinfo(<span class="string">"Falsch"</span>, 
-                              f<span class="string">"Richtiges Zeichen: {self.lern_text[self.position]}"</span>)
-            self.position = 0
-            self.anzeige_label.config(text=<span class="string">""</span>)
-
-    <span class="keyword">def</span> <span class="function">_on_close</span>(self):
-        <span class="docstring">"""Handle window close event"""</span>
-        self.save_texts()
-        self.root.destroy()
-
-    <span class="keyword">def</span> <span class="function">starte</span>(self):
-        <span class="docstring">"""Start the main application loop"""</span>
-        self.root.mainloop()
-
-<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
-    trainer = StringTrainer()
-    trainer.starte()</code></pre>
+        <!-- Status label for feedback -->
+        <div class="status-label" id="status-label"></div>
     </div>
+
+    <script>
+        // Helper function to save texts to localStorage
+        function saveTexts(texts) {
+            localStorage.setItem('saved_texts', JSON.stringify(texts));
+        }
+
+        // Helper function to load texts from localStorage
+        function loadTexts() {
+            const savedTexts = localStorage.getItem('saved_texts');
+            return savedTexts ? JSON.parse(savedTexts) : [];
+        }
+
+        // Initialize the app
+        function init() {
+            const texts = loadTexts();
+            const textDropdown = document.getElementById('text-dropdown');
+            const newTextInput = document.getElementById('new-text');
+            const startButton = document.getElementById('start-btn');
+            const displayLabel = document.getElementById('display-label');
+            const statusLabel = document.getElementById('status-label');
+            let position = 0;
+            let lern_text = "";
+
+            // Function to update dropdown with saved texts
+            function updateDropdown() {
+                textDropdown.innerHTML = texts.map(text => `<option value="${text}">${text}</option>`).join('');
+            }
+
+            // Function to start learning
+            function starteLernen() {
+                const text = newTextInput.value.trim() || textDropdown.value;
+                if (!text) {
+                    statusLabel.innerHTML = "Bitte Text eingeben oder auswählen!";
+                    return;
+                }
+
+                if (!texts.includes(text)) {
+                    texts.push(text);
+                    saveTexts(texts);
+                    updateDropdown();
+                    statusLabel.innerHTML = "Neuer Text gespeichert!";
+                }
+
+                lern_text = text;
+                position = 0;
+                displayLabel.innerHTML = "";
+                statusLabel.innerHTML = "";
+
+                // Focus on the display label to capture key input
+                displayLabel.focus();
+            }
+
+            // Function to check user input
+            function pruefeEingabe(event) {
+                if (!lern_text || event.key === 'Enter' || event.key === 'Escape') {
+                    return;
+                }
+
+                if (event.key === lern_text[position]) {
+                    displayLabel.innerHTML = lern_text.substring(0, position + 1);
+                    position += 1;
+
+                    if (position === lern_text.length) {
+                        alert("Gratulation! Text gelernt!");
+                        position = 0;
+                        displayLabel.innerHTML = "";
+                        newTextInput.value = ""; // Clear input field
+                    }
+                } else {
+                    statusLabel.innerHTML = `Falsches Zeichen! Richtiges Zeichen: ${lern_text[position]}`;
+                    position = 0;
+                    displayLabel.innerHTML = "";
+                }
+            }
+
+            // Event listeners
+            startButton.addEventListener('click', starteLernen);
+            document.addEventListener('keydown', pruefeEingabe);
+
+            // Initial dropdown update
+            updateDropdown();
+        }
+
+        // Initialize the app
+        init();
+    </script>
 </body>
 </html>
