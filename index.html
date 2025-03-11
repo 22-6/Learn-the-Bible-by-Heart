@@ -154,31 +154,16 @@
         function handleKeyPress(event) {
             if (!currentText || position >= currentText.length) return;
 
-            if (event.key === 'Escape') {
-                currentText = '';
-                showStatus('Abgebrochen', 'info');
-                return;
-            }
-
-            // Ermittlung des erwarteten Zeichens im Text
+            // Das aktuelle erwartete Zeichen
             const expectedChar = currentText[position];
 
-            // Prüfen, ob die Eingabe korrekt ist (inkl. Leerzeichen)
-            if (
-                event.key === expectedChar || // Zeichen stimmen überein
-                (event.key === ' ' && expectedChar === ' ') // Korrektes Leerzeichen
-            ) {
-                // Fehlermeldung entfernen
-                const statusElement = document.getElementById('status');
-                if (statusElement.classList.contains('error')) {
-                    statusElement.textContent = '';
-                    statusElement.classList.remove('error');
-                }
-
+            // Prüfen, ob das eingegebene Zeichen mit dem erwarteten Zeichen übereinstimmt
+            if (event.key === expectedChar) {
+                // Korrekte Eingabe: Zeige Fortschritt
                 updateDisplay();
                 checkCompletion();
             } else {
-                // Falsche Eingabe
+                // Falsche Eingabe: Fehlerbehandlung
                 handleWrongInput();
             }
         }
@@ -197,7 +182,7 @@
         }
 
         function handleWrongInput() {
-            showStatus(`Falsch! Nächstes Zeichen: ${currentText[position]}`, 'error');
+            showStatus(`Falsch! Nächstes Zeichen: "${currentText[position]}"`, 'error');
         }
 
         function sanitizeInput(text) {
