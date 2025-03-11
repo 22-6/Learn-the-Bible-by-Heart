@@ -65,13 +65,12 @@
         let savedTexts = [];
         let storageAvailable = true;
 
-        // Initialize application
         function init() {
             checkStorageAvailability();
             loadTexts();
             document.addEventListener('keydown', handleKeyPress);
         }
-        
+
         function checkStorageAvailability() {
             try {
                 localStorage.setItem('test', 'test');
@@ -85,7 +84,6 @@
 
         function loadTexts() {
             if (!storageAvailable) return;
-            
             try {
                 const data = localStorage.getItem(STORAGE_KEY);
                 savedTexts = data ? JSON.parse(data) : [];
@@ -98,7 +96,6 @@
 
         function saveTexts() {
             if (!storageAvailable) return;
-            
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(savedTexts));
             } catch (error) {
@@ -163,8 +160,14 @@
                 return;
             }
 
-            // Prüfen, ob die Eingabe korrekt ist (Groß-/Kleinschreibung ignoriert)
-            if (event.key.toLowerCase() === currentText[position].toLowerCase()) {
+            // Ermittlung des erwarteten Zeichens im Text
+            const expectedChar = currentText[position];
+
+            // Prüfen, ob die Eingabe korrekt ist (inkl. Leerzeichen)
+            if (
+                event.key === expectedChar || // Zeichen stimmen überein
+                (event.key === ' ' && expectedChar === ' ') // Korrektes Leerzeichen
+            ) {
                 // Fehlermeldung entfernen
                 const statusElement = document.getElementById('status');
                 if (statusElement.classList.contains('error')) {
@@ -195,7 +198,6 @@
 
         function handleWrongInput() {
             showStatus(`Falsch! Nächstes Zeichen: ${currentText[position]}`, 'error');
-            // Fortschritt bleibt erhalten, um erneute Eingabe zu erleichtern
         }
 
         function sanitizeInput(text) {
@@ -266,7 +268,6 @@
             input.click();
         }
 
-        // Initialize on load
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
