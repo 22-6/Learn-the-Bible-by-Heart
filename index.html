@@ -6,16 +6,28 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
     <title>Bibel-Trainer</title>
     <style>
-        /* Existing styles remain unchanged */
-        
-        .import-export {
-            margin-top: 1.5rem;
-            display: flex;
-            gap: 0.5rem;
+        .status {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 4px;
         }
-        
-        .import-export button {
-            flex: 1;
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .status.visible {
+            display: block;
+        }
+        .status {
+            display: none;
         }
     </style>
 </head>
@@ -52,7 +64,7 @@
         let position = 0;
         let savedTexts = [];
         let storageAvailable = true;
-    
+
         // Initialize application
         function init() {
             checkStorageAvailability();
@@ -151,10 +163,19 @@
                 return;
             }
 
-            if (event.key === currentText[position]) {
+            // Prüfen, ob die Eingabe korrekt ist (Groß-/Kleinschreibung ignoriert)
+            if (event.key.toLowerCase() === currentText[position].toLowerCase()) {
+                // Fehlermeldung entfernen
+                const statusElement = document.getElementById('status');
+                if (statusElement.classList.contains('error')) {
+                    statusElement.textContent = '';
+                    statusElement.classList.remove('error');
+                }
+
                 updateDisplay();
                 checkCompletion();
             } else {
+                // Falsche Eingabe
                 handleWrongInput();
             }
         }
@@ -174,8 +195,7 @@
 
         function handleWrongInput() {
             showStatus(`Falsch! Nächstes Zeichen: ${currentText[position]}`, 'error');
-            position = 0;
-            document.getElementById('display-text').textContent = '';
+            // Fortschritt bleibt erhalten, um erneute Eingabe zu erleichtern
         }
 
         function sanitizeInput(text) {
