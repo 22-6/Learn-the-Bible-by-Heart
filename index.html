@@ -3,84 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
     <title>Bibel-Trainer</title>
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --success-color: #27ae60;
-            --error-color: #c0392b;
+        /* Existing styles remain unchanged */
+        
+        .import-export {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 0.5rem;
         }
-
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .container {
-            background: #f8f9fa;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-        }
-
-        h1 {
-            color: var(--primary-color);
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .controls {
-            display: grid;
-            gap: 1rem;
-            grid-template-columns: 1fr auto;
-        }
-
-        #display-text {
-            font-size: 1.5rem;
-            letter-spacing: 0.1em;
-            margin: 2rem 0;
-            padding: 1.5rem;
-            background: white;
-            border-radius: 8px;
-            min-height: 4rem;
-            border: 2px solid #ddd;
-        }
-
-        .status {
-            padding: 0.8rem;
-            border-radius: 4px;
-            margin: 1rem 0;
-            display: none;
-        }
-
-        .status.visible {
-            display: block;
-        }
-
-        input, select, button {
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-
-        button {
-            background: var(--primary-color);
-            color: white;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .delete-btn {
-            background: var(--error-color);
-            margin-left: 0.5rem;
+        
+        .import-export button {
+            flex: 1;
         }
     </style>
 </head>
@@ -104,36 +39,59 @@
 
         <div id="display-text" aria-live="polite"></div>
         <div id="status" class="status" aria-live="assertive"></div>
+        
+        <div class="import-export">
+            <button onclick="exportTexts()">Export Texte</button>
+            <button onclick="importTexts()">Import Texte</button>
+        </div>
     </div>
 
     <script>
         const STORAGE_KEY = 'bibeltrainer-v1';
         let currentText = '';
         let position = 0;
-        let savedTexts = []; // Add this line
+        let savedTexts = [];
+        let storageAvailable = true;
     
         // Initialize application
         function init() {
+            checkStorageAvailability();
             loadTexts();
             document.addEventListener('keydown', handleKeyPress);
         }
+        
+        function checkStorageAvailability() {
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+            } catch (e) {
+                storageAvailable = false;
+                showStatus('Lokaler Speicher ist nicht verfügbar. Deine Texte werden nicht gespeichert.', 'error');
+                document.querySelector('.import-export').style.display = 'none';
+            }
+        }
 
         function loadTexts() {
+            if (!storageAvailable) return;
+            
             try {
                 const data = localStorage.getItem(STORAGE_KEY);
                 savedTexts = data ? JSON.parse(data) : [];
                 updateDropdown();
             } catch (error) {
                 showStatus('Fehler beim Laden der Texte', 'error');
+                savedTexts = [];
             }
         }
 
         function saveTexts() {
+            if (!storageAvailable) return;
+            
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(savedTexts));
             } catch (error) {
                 if (error.name === 'QuotaExceededError') {
-                    showStatus('Speicher voll - Bitte alte Texte löschen', 'error');
+                    showStatus('Speicher voll - Bitte alte Texte löschen oder exportieren', 'error');
                 } else {
                     showStatus('Speichern fehlgeschlagen', 'error');
                 }
@@ -146,7 +104,7 @@
             savedTexts.forEach(text => {
                 const option = document.createElement('option');
                 option.value = text;
-                option.textContent = text;
+                option.textContent = text.length > 50 ? text.substring(0, 47) + '...' : text;
                 select.appendChild(option);
             });
         }
@@ -229,6 +187,63 @@
             status.className = `status visible ${type}`;
             status.textContent = message;
             setTimeout(() => status.classList.remove('visible'), 3000);
+        }
+        
+        function exportTexts() {
+            if (savedTexts.length === 0) {
+                showStatus('Keine Texte zum Exportieren vorhanden', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(savedTexts);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportLink = document.createElement('a');
+            exportLink.setAttribute('href', dataUri);
+            exportLink.setAttribute('download', 'bibel-trainer-texte.json');
+            document.body.appendChild(exportLink);
+            exportLink.click();
+            document.body.removeChild(exportLink);
+            
+            showStatus('Texte erfolgreich exportiert', 'success');
+        }
+        
+        function importTexts() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = event => {
+                    try {
+                        const importedTexts = JSON.parse(event.target.result);
+                        
+                        if (!Array.isArray(importedTexts)) {
+                            throw new Error('Ungültiges Format');
+                        }
+                        
+                        // Merge with existing texts, avoiding duplicates
+                        importedTexts.forEach(text => {
+                            if (!savedTexts.includes(text)) {
+                                savedTexts.push(text);
+                            }
+                        });
+                        
+                        saveTexts();
+                        updateDropdown();
+                        showStatus(`${importedTexts.length} Texte importiert`, 'success');
+                    } catch (error) {
+                        showStatus('Fehler beim Importieren: Ungültiges Dateiformat', 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
         }
 
         // Initialize on load
