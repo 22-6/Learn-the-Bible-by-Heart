@@ -154,6 +154,266 @@
         function handleKeyPress(event) {
             if (!currentText || position >= currentText.length) return;
 
+            const expectedChar = currentText[position];
+
+            // Debugging: Zeige die eingegebene Taste und das erwartete Zeichen
+            console.log(`Eingegeben: "${event.key}", Erwartet: "${expectedChar}"`);
+
+            // Prüfen, ob die Eingabe korrekt ist (inkl. Groß-/Kleinschreibung)
+            if (event.key.length === 1 && event.key.toLowerCase() === expectedChar.toLowerCase()) {
+                // Korrekte Eingabe: Fortschritt anzeigen
+                updateDisplay();
+                checkCompletion();
+            } else {
+                // Falsche Eingabe: Fehlermeldung anzeigen
+                handleWrongInput();
+            }
+        }
+
+        function updateDisplay() {
+            const display = document.getElementById('display-text');
+            display.textContent = currentText.substring(0, position + 1);
+            position++;
+        }
+
+        function checkCompletion() {
+            if (position === currentText.length) {
+                showStatus('Gratulation! Text gelernt!', 'success');
+                currentText = '';
+            }
+        }
+
+        function handleWrongInput() {
+            showStatus(`Falsch! Nächstes Zeichen: "${currentText[position]}"`, 'error');
+        }
+
+        function sanitizeInput(text) {
+            return text.replace(/[<>]/g, '');
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status visible ${type}`;
+            status.textContent = message;
+            setTimeout(() => status.classList.remove('visible'), 3000);
+        }
+        
+        function exportTexts() {
+            if (savedTexts.length === 0) {
+                showStatus('Keine Texte zum Exportieren vorhanden', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(savedTexts);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportLink = document.createElement('a');
+            exportLink.setAttribute('href', dataUri);
+            exportLink.setAttribute('download', 'bibel-trainer-texte.json');
+            document.body.appendChild(exportLink);
+            exportLink.click();
+            document.body.removeChild(exportLink);
+            
+            showStatus('Texte erfolgreich exportiert', 'success');
+        }
+        
+        function importTexts() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = event => {
+                    try {
+                        const importedTexts = JSON.parse(event.target.result);
+                        
+                        if (!Array.isArray(importedTexts)) {
+                            throw new Error('Ungültiges Format');
+                        }
+                        
+                        // Merge with existing texts, avoiding duplicates
+                        importedTexts.forEach(text => {
+                            if (!savedTexts.includes(text)) {
+                                savedTexts.push(text);
+                            }
+                        });
+                        
+                        saveTexts();
+                        updateDropdown();
+                        showStatus(`${importedTexts.length} Texte importiert`, 'success');
+                    } catch (error) {
+                        showStatus('Fehler beim Importieren: Ungültiges Dateiformat', 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
+    <title>Bibel-Trainer</title>
+    <style>
+        .status {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .status.visible {
+            display: block;
+        }
+        .status {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bibel-Trainer</h1>
+        
+        <div class="controls">
+            <div>
+                <select id="text-select" aria-label="Gespeicherte Texte">
+                    <option value="">-- Bitte wählen --</option>
+                </select>
+                <button class="delete-btn" onclick="deleteSelectedText()">Löschen</button>
+            </div>
+            
+            <div>
+                <input type="text" id="new-text" placeholder="Neuen Text eingeben" aria-label="Neuer Text">
+                <button onclick="startLearning()">Start</button>
+            </div>
+        </div>
+
+        <div id="display-text" aria-live="polite"></div>
+        <div id="status" class="status" aria-live="assertive"></div>
+        
+        <div class="import-export">
+            <button onclick="exportTexts()">Export Texte</button>
+            <button onclick="importTexts()">Import Texte</button>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'bibeltrainer-v1';
+        let currentText = '';
+        let position = 0;
+        let savedTexts = [];
+        let storageAvailable = true;
+
+        function init() {
+            checkStorageAvailability();
+            loadTexts();
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        function checkStorageAvailability() {
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+            } catch (e) {
+                storageAvailable = false;
+                showStatus('Lokaler Speicher ist nicht verfügbar. Deine Texte werden nicht gespeichert.', 'error');
+                document.querySelector('.import-export').style.display = 'none';
+            }
+        }
+
+        function loadTexts() {
+            if (!storageAvailable) return;
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                savedTexts = data ? JSON.parse(data) : [];
+                updateDropdown();
+            } catch (error) {
+                showStatus('Fehler beim Laden der Texte', 'error');
+                savedTexts = [];
+            }
+        }
+
+        function saveTexts() {
+            if (!storageAvailable) return;
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(savedTexts));
+            } catch (error) {
+                if (error.name === 'QuotaExceededError') {
+                    showStatus('Speicher voll - Bitte alte Texte löschen oder exportieren', 'error');
+                } else {
+                    showStatus('Speichern fehlgeschlagen', 'error');
+                }
+            }
+        }
+
+        function updateDropdown() {
+            const select = document.getElementById('text-select');
+            select.innerHTML = '<option value="">-- Bitte wählen --</option>';
+            savedTexts.forEach(text => {
+                const option = document.createElement('option');
+                option.value = text;
+                option.textContent = text.length > 50 ? text.substring(0, 47) + '...' : text;
+                select.appendChild(option);
+            });
+        }
+
+        function startLearning() {
+            const newText = sanitizeInput(document.getElementById('new-text').value);
+            const selectedText = document.getElementById('text-select').value;
+
+            currentText = newText || selectedText;
+
+            if (!currentText) {
+                showStatus('Bitte Text eingeben oder auswählen!', 'error');
+                return;
+            }
+
+            if (newText && !savedTexts.includes(newText)) {
+                savedTexts.push(newText);
+                saveTexts();
+                updateDropdown();
+                showStatus('Neuer Text gespeichert!', 'success');
+            }
+
+            position = 0;
+            document.getElementById('display-text').textContent = '';
+            document.getElementById('new-text').value = '';
+        }
+
+        function deleteSelectedText() {
+            const selectedText = document.getElementById('text-select').value;
+            if (!selectedText) return;
+
+            savedTexts = savedTexts.filter(text => text !== selectedText);
+            saveTexts();
+            updateDropdown();
+            showStatus('Text gelöscht', 'success');
+        }
+
+        function handleKeyPress(event) {
+            if (!currentText || position >= currentText.length) return;
+
             // Das aktuelle erwartete Zeichen
             const expectedChar = currentText[position];
 
